@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendor Performance Analytics</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+  color:#1f2937;
+  min-height:100vh;
+  background:
+    radial-gradient(800px 400px at 20% 10%, rgba(99,102,241,0.15), transparent),
+    radial-gradient(600px 300px at 80% 20%, rgba(124,58,237,0.12), transparent),
+    linear-gradient(180deg,#f8fafc,#eef2ff);
+}
+
+/* HEADER */
+.header{
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  color:#fff;
+  padding:2rem;
+  text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.1);
+}
+.header h1{font-size:2.4rem;text-shadow:2px 2px 4px rgba(0,0,0,.2)}
+.header p{opacity:.9;margin-top:.4rem;font-size:1.1rem}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:auto;padding:2rem;min-height:calc(100vh - 400px)}
+.view{display:none}
+.view.active{display:block}
+
+/* HOME */
+.home-intro{text-align:center;margin-bottom:2rem}
+.home-intro h2{font-size:2rem;color:#1e293b}
+.home-intro p{color:#4b5563;max-width:700px;margin:auto;margin-top:.5rem}
+
+/* KPI */
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:1.5rem;
+  margin:2rem 0;
+}
+.kpi{
+  background:#fff;
+  padding:1.5rem;
+  border-radius:.75rem;
+  box-shadow:0 6px 14px rgba(0,0,0,.06);
+  transition:transform .3s, box-shadow .3s;
+}
+.kpi:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 24px rgba(0,0,0,.12);
+}
+.kpi span{
+  font-size:.8rem;
+  color:#6b7280;
+  text-transform:uppercase;
+  font-weight:600;
+  letter-spacing:.5px;
+}
+.kpi h3{font-size:1.8rem;margin-top:.4rem;color:#2563eb;font-weight:800}
+
+/* CHART */
+.chart-box{
+  background:#fff;
+  padding:1.5rem;
+  border-radius:.75rem;
+  box-shadow:0 6px 14px rgba(0,0,0,.06);
+}
+.chart-container{height:340px}
+
+/* HOME BUTTONS */
+.home-actions{
+  display:flex;
+  justify-content:center;
+  gap:2rem;
+  margin-top:2.5rem;
+  flex-wrap:wrap;
+}
+.home-btn{
+  width:260px;
+  height:140px;
+  border:none;
+  border-radius:1rem;
+  font-size:1.4rem;
+  font-weight:700;
+  color:#fff;
+  cursor:pointer;
+  box-shadow:0 10px 25px rgba(0,0,0,.2);
+  transition:transform .3s, box-shadow .3s;
+  position:relative;
+  overflow:hidden;
+}
+.home-btn::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(255,255,255,.1);
+  opacity:0;
+  transition:.3s;
+}
+.home-btn:hover{
+  transform:translateY(-6px);
+  box-shadow:0 15px 35px rgba(0,0,0,.3);
+}
+.home-btn:hover::before{opacity:1}
+.btn-vendors{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+.btn-analytics{background:linear-gradient(135deg,#7c3aed,#6d28d9)}
+
+/* BACK */
+.back-btn{
+  background:#e5e7eb;
+  border:none;
+  padding:.6rem 1.2rem;
+  border-radius:.4rem;
+  font-weight:600;
+  cursor:pointer;
+  margin-bottom:1.5rem;
+  transition:.3s;
+}
+.back-btn:hover{
+  background:#d1d5db;
+}
+
+/* VENDORS */
+.add-btn{
+  background:#2563eb;
+  color:#fff;
+  padding:.6rem 1.4rem;
+  border:none;
+  border-radius:.5rem;
+  font-weight:600;
+  cursor:pointer;
+  margin-bottom:1.5rem;
+  transition:.3s;
+}
+.add-btn:hover{
+  background:#1d4ed8;
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(37,99,235,.3);
+}
+.vendors-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.5rem;
+}
+.vendor-card{
+  background:#fff;
+  padding:1.4rem;
+  border-radius:.75rem;
+  box-shadow:0 6px 14px rgba(0,0,0,.06);
+  transition:transform .3s, box-shadow .3s;
+  border-left:4px solid #2563eb;
+}
+.vendor-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 24px rgba(0,0,0,.12);
+}
+.vendor-name{font-weight:700;font-size:1.1rem;color:#1e293b;margin-bottom:.4rem}
+.vendor-card > div{margin-bottom:.3rem;color:#4b5563}
+.rating{color:#f59e0b;font-weight:700}
+
+/* MODAL */
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  backdrop-filter:blur(4px);
+}
+.modal.active{display:flex}
+.modal-content{
+  background:#fff;
+  border-radius:1rem;
+  width:90%;
+  max-width:420px;
+  box-shadow:0 20px 50px rgba(0,0,0,.3);
+  animation:modalSlide .3s ease-out;
+}
+@keyframes modalSlide{
+  from{transform:translateY(-30px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+.modal-header{
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  color:#fff;
+  padding:1rem 1.5rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius:1rem 1rem 0 0;
+}
+.modal-header h3{font-size:1.3rem}
+.modal-body{padding:1.5rem}
+.modal-body input{
+  width:100%;
+  padding:.8rem;
+  margin-bottom:.8rem;
+  border:1px solid #d1d5db;
+  border-radius:.5rem;
+  font-size:.95rem;
+  transition:.3s;
+}
+.modal-body input:focus{
+  outline:none;
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+.close-btn{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:1.8rem;
+  cursor:pointer;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  transition:.3s;
+}
+.close-btn:hover{
+  background:rgba(255,255,255,.2);
+}
+
+/* FOOTER */
+footer{
+  padding:2rem 1rem;
+  text-align:center;
+  background:linear-gradient(135deg,#1e293b,#334155);
+  color:#e2e8f0;
+  margin-top:4rem;
+  position:relative;
+  overflow:hidden;
+}
+footer::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:4px;
+  background:linear-gradient(90deg,#2563eb,#7c3aed,#2563eb);
+  background-size:200% 100%;
+  animation:shimmer 3s linear infinite;
+}
+@keyframes shimmer{
+  0%{background-position:0% 50%}
+  100%{background-position:200% 50%}
+}
+.footer-content{
+  max-width:1200px;
+  margin:auto;
+}
+.footer-logo{
+  font-size:1.5rem;
+  font-weight:700;
+  margin-bottom:.5rem;
+  background:linear-gradient(135deg,#60a5fa,#a78bfa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.footer-tagline{
+  font-size:.9rem;
+  color:#94a3b8;
+  margin-bottom:1.2rem;
+}
+.footer-links{
+  display:flex;
+  justify-content:center;
+  gap:2rem;
+  margin-bottom:1rem;
+  flex-wrap:wrap;
+}
+.footer-link{
+  color:#cbd5e1;
+  text-decoration:none;
+  font-size:.9rem;
+  transition:.3s;
+  position:relative;
+}
+.footer-link::after{
+  content:"";
+  position:absolute;
+  bottom:-4px;
+  left:0;
+  width:0;
+  height:2px;
+  background:linear-gradient(90deg,#60a5fa,#a78bfa);
+  transition:.3s;
+}
+.footer-link:hover{
+  color:#60a5fa;
+}
+.footer-link:hover::after{
+  width:100%;
+}
+.footer-bottom{
+  font-size:.8rem;
+  color:#64748b;
+  padding-top:1rem;
+  border-top:1px solid #475569;
+  margin-top:1rem;
+}
+.footer-bottom span{
+  color:#a78bfa;
+  font-weight:600;
+}
+
+/* MOBILE */
+@media(max-width:600px){
+  .home-btn{width:100%;height:120px}
+  .header h1{font-size:1.8rem}
+  .kpi h3{font-size:1.5rem}
+  .footer-links{gap:1rem}
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>📊 Vendor Performance Analysis</h1>
+  <p>Monitor, evaluate, and optimize vendor performance</p>
+</div>
+
+<div class="container">
+
+<!-- HOME -->
+<div id="home" class="view active">
+  <div class="home-intro">
+    <h2>Vendor Performance Overview</h2>
+    <p>Centralized insights into quality, delivery efficiency, and spend.</p>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span>Total Vendors</span><h3 id="kpiVendors">0</h3></div>
+    <div class="kpi"><span>Average Quality</span><h3 id="kpiQuality">0%</h3></div>
+    <div class="kpi"><span>Average Delivery</span><h3 id="kpiDelivery">0%</h3></div>
+    <div class="kpi"><span>Total Spend</span><h3 id="kpiSpend">$0</h3></div>
+  </div>
+
+  <div class="home-actions">
+    <button class="home-btn btn-vendors" onclick="openView('vendors')">🏢 Vendors</button>
+    <button class="home-btn btn-analytics" onclick="openView('analytics')">📈 Analytics</button>
+  </div>
+</div>
+
+<!-- VENDORS -->
+<div id="vendors" class="view">
+  <button class="back-btn" onclick="openView('home')">← Back</button>
+  <button class="add-btn" onclick="openAddVendor()">➕ Add Vendor</button>
+  <div class="vendors-grid" id="vendorsGrid"></div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="analytics" class="view">
+  <button class="back-btn" onclick="openView('home')">← Back</button>
+  <div class="chart-box">
+    <h3 style="margin-bottom:1rem;">Quality vs Delivery Performance</h3>
+    <div class="chart-container">
+      <canvas id="analyticsChart"></canvas>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="addVendorModal" class="modal" onclick="closeAddVendor(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Vendor</h3>
+      <button class="close-btn" onclick="closeAddVendor()">×</button>
+    </div>
+    <div class="modal-body">
+      <input id="vName" placeholder="Vendor Name">
+      <input id="vCategory" placeholder="Category">
+      <input id="vQuality" type="number" placeholder="Quality %" min="0" max="100">
+      <input id="vDelivery" type="number" placeholder="Delivery %" min="0" max="100">
+      <input id="vSpend" type="number" placeholder="Total Spend">
+      <input id="vRating" type="number" step="0.1" placeholder="Rating (1–5)" min="1" max="5">
+      <button class="add-btn" onclick="addVendor()">Add Vendor</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-content">
+    <div class="footer-logo">📊 VendorPulse</div>
+    <div class="footer-tagline">Empowering smarter vendor relationships</div>
+   
+    <div class="footer-bottom">
+      © 2025 VendorPulse Analytics. Crafted with <span>passion</span> for excellence by Shubham
+    </div>
+  </div>
+</footer>
+
+<script>
+let vendors=[
+ {name:"TechSupply Co",category:"Electronics",quality:92,delivery:88,spend:485000,rating:4.6},
+ {name:"Global Parts Ltd",category:"Components",quality:78,delivery:72,spend:312000,rating:3.8},
+ {name:"Premium Manufacturing",category:"Raw Materials",quality:95,delivery:93,spend:678000,rating:4.8}
+];
+
+let analyticsChart=null;
+
+/* NAV */
+function openView(id){
+ document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+ if(id==="analytics") setTimeout(drawAnalyticsChart,50);
+}
+
+/* KPI */
+function updateKPIs(){
+ kpiVendors.textContent=vendors.length;
+ kpiQuality.textContent=Math.round(vendors.reduce((a,b)=>a+b.quality,0)/vendors.length)+"%";
+ kpiDelivery.textContent=Math.round(vendors.reduce((a,b)=>a+b.delivery,0)/vendors.length)+"%";
+ kpiSpend.textContent="$"+vendors.reduce((a,b)=>a+b.spend,0).toLocaleString();
+}
+
+/* ANALYTICS */
+function drawAnalyticsChart(){
+ if(analyticsChart) analyticsChart.destroy();
+ analyticsChart=new Chart(analyticsChartCanvas,{
+  type:"scatter",
+  data:{
+   datasets:[{
+    label:"Vendors",
+    data:vendors.map(v=>({x:v.delivery,y:v.quality})),
+    backgroundColor:"#7c3aed",
+    pointRadius:8,
+    pointHoverRadius:12
+   }]
+  },
+  options:{
+   responsive:true,
+   maintainAspectRatio:false,
+   scales:{
+    x:{title:{display:true,text:"Delivery Performance %"},min:0,max:100},
+    y:{title:{display:true,text:"Quality Score %"},min:0,max:100}
+   },
+   plugins:{
+    tooltip:{
+     callbacks:{
+      label:function(context){
+       const idx=context.dataIndex;
+       return vendors[idx].name+": Quality "+vendors[idx].quality+"%, Delivery "+vendors[idx].delivery+"%";
+      }
+     }
+    }
+   }
+  }
+ });
+}
+
+/* VENDORS */
+function renderVendors(){
+ vendorsGrid.innerHTML="";
+ vendors.forEach(v=>{
+  vendorsGrid.innerHTML+=`
+   <div class="vendor-card">
+    <div class="vendor-name">${v.name}</div>
+    <div>${v.category}</div>
+    <div class="rating">⭐ ${v.rating}</div>
+    <div>Quality: ${v.quality}%</div>
+    <div>Delivery: ${v.delivery}%</div>
+    <div>Spend: $${v.spend.toLocaleString()}</div>
+   </div>`;
+ });
+ updateKPIs();
+}
+
+/* MODAL */
+function openAddVendor(){addVendorModal.classList.add("active")}
+function closeAddVendor(e){
+ if(!e || e.target.classList.contains("modal")){
+  addVendorModal.classList.remove("active");
+  // Clear inputs
+  vName.value="";
+  vCategory.value="";
+  vQuality.value="";
+  vDelivery.value="";
+  vSpend.value="";
+  vRating.value="";
+ }
+}
+function addVendor(){
+ if(!vName.value || !vCategory.value || !vQuality.value || !vDelivery.value || !vSpend.value || !vRating.value){
+  alert("Please fill all fields");
+  return;
+ }
+ vendors.push({
+  name:vName.value,
+  category:vCategory.value,
+  quality:+vQuality.value,
+  delivery:+vDelivery.value,
+  spend:+vSpend.value,
+  rating:+vRating.value
+ });
+ closeAddVendor();
+ renderVendors();
+}
+
+/* INIT */
+const analyticsChartCanvas=document.getElementById("analyticsChart");
+renderVendors();
+</script>
+
+</body>
+</html>
